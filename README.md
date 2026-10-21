@@ -150,3 +150,5 @@ schema.sql         Skema T-SQL asli dari template test (referensi produksi)
 Rekam layar 1–2 menit dari demo UI lokal (`http://localhost:8000/`) dengan urutan:
 Q1 Sales_Staff → Q2 Sales_Staff → Q3 Sales_Staff → Q4 Sales_Staff (tolak) → ganti Management, Q4 ulang (berhasil) → Q5 (tolak).
 Hasil angka pada tabel "Hasil terverifikasi" di atas adalah hasil aktual engine atas data dummy.
+
+**Video demo:** [Video-Demo-SouthCity-AI-Assistant.mp4](Video-Demo-SouthCity-AI-Assistant.mp4) — klik untuk menonton langsung di pemutar video GitHub (1 mnt 51 dtk, mencakup Q1–Q5, dengan narasi).
