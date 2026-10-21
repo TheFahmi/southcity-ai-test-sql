@@ -58,8 +58,10 @@ keputusan akhir ada di kode guardrail, bukan di prompt.
 
 - Skema produksi target: MS SQL Server, sesuai `schema.sql` asli dari template
   (T-SQL `CREATE TABLE` + `INSERT` dummy).
-- Untuk demo lokal tanpa SQL Server, repo ini menyertakan implementasi SQLite dengan
-  **tabel, kolom, dan isi data yang identik** (`app/db.py`), sehingga seluruh angka
+- Untuk demo lokal tanpa SQL Server, `app/db.py` **memuat `schema.sql` itu sendiri**
+  (satu-satunya sumber kebenaran — tidak ada duplikasi skema/seed di kode) dan
+  mengeksekusinya di SQLite dengan satu penyesuaian dialek: frasa T-SQL
+  `FOREIGN KEY REFERENCES` diterjemahkan menjadi `REFERENCES`. Seluruh angka
   jawaban dapat direproduksi persis. Query yang digenerate adalah SQL standar
   (JOIN/GROUP BY/SUM/parameter) yang portabel ke T-SQL; untuk deployment SQL Server,
   ganti layer koneksi di `app/db.py` dengan `pyodbc`/`pymssql` dan placeholder `?` yang sama.
@@ -138,12 +140,11 @@ app/main.py        FastAPI: POST /ask|/query, GET /health, demo UI
 app/engine.py      Text-to-SQL deterministik + format Rupiah + perangkai jawaban
 app/llm.py         Pengusul SQL berbasis LLM (opsional, OpenAI-compatible)
 app/guardrails.py  Layer 0–2: injection intent, read-only SQL, RBAC tabel
-app/db.py          Skema + seed identik schema.sql, eksekusi read-only
+app/db.py          Memuat schema.sql (sumber kebenaran tunggal), eksekusi read-only
 static/index.html  Halaman demo Q1–Q5 dengan pemilih role
 tests/             Test end-to-end kelima pertanyaan x kedua role + mode LLM
 schema.sql         Skema T-SQL asli dari template test (referensi produksi)
 ```
-
 
 ## Bukti demo
 
