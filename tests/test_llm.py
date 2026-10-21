@@ -14,7 +14,7 @@ def _enable_llm(monkeypatch, fn):
     monkeypatch.setenv("TEXT2SQL_MODE", "llm")
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     monkeypatch.setenv("LLM_MODEL", "mock-model")
-    monkeypatch.setattr(llm_mod, "propose_sql", fn)
+    monkeypatch.setattr(llm_mod, "propose_sql", lambda q, role="Management": fn(q))
 
 def test_extract_sql_plain_and_fenced():
     assert extract_sql("SELECT 1").startswith("SELECT")

@@ -121,17 +121,42 @@ atau gateway LLM internal). Prinsip keamanannya tidak berubah:
   `llm:<model>`, `deterministic`, atau `deterministic (llm fallback)`.
 - Lihat `.env.example`. Mode default tanpa konfigurasi LLM apa pun: `deterministic`.
 
+## RAG (Retrieval-Augmented Generation)
+
+Prompt untuk LLM tidak lagi berisi seluruh skema secara statis. Lapisan
+retrieval di `app/rag.py` memilih konteks yang relevan untuk setiap
+pertanyaan dari tiga sumber pengetahuan di repo ini:
+
+1. **Katalog skema** — tabel & kolom yang di-parse dari `schema.sql`
+   (schema linking), diperluas satu lompatan mengikuti relasi FK
+   (tabel yang cocok menarik tabel JOIN-nya).
+2. **Glosarium bisnis** — istilah Bahasa Indonesia dipetakan ke makna
+   SQL-nya, mis. "tunggakan" → `AmountBilled - AmountPaid`.
+3. **Bank contoh** — pasangan pertanyaan → SQL terkurasi sebagai
+   few-shot, dipilih berdasarkan kemiripan dengan pertanyaan masuk.
+
+Retrieval juga **sadar RBAC**: katalog, glosarium, dan contoh yang
+menyinggung tabel terlarang bagi role pemanggil (mis. `GL_Journals`
+untuk `Sales_Staff`) tidak pernah masuk ke konteks role tersebut —
+pembatasannya berlaku di lapisan prompt, bukan hanya saat SQL divalidasi.
+Setiap respon API mencantumkan ringkasannya pada field `rag`
+(`tables`, `glossary_hits`, `examples`). Skor kemiripan saat ini memakai
+overlap token tanpa dependensi eksternal; antarmuka `retrieve()` tetap
+sama bila nanti diganti embedding/vektor (cosine similarity).
+
 ## Test otomatis
 
 ```bash
 pytest -v
 ```
 
-12 test mencakup: Q1, Q2, Q3 (unit vacant), Q4 ditolak untuk Sales_Staff,
+17 test mencakup: Q1, Q2, Q3 (unit vacant), Q4 ditolak untuk Sales_Staff,
 Q4 berhasil untuk Management (JournalID 901), Q5 ditolak untuk kedua role
-(+ verifikasi record 901 tidak terhapus), pengiriman role via header, dan mode LLM
+(+ verifikasi record 901 tidak terhapus), pengiriman role via header, mode LLM
 (SQL baik lolos dengan tag `llm:<model>`; usulan DELETE diblokir READ_ONLY;
-usulan GL untuk Sales_Staff diblokir RBAC; kegagalan LLM memicu fallback deterministik).
+usulan GL untuk Sales_Staff diblokir RBAC; kegagalan LLM memicu fallback deterministik),
+dan RAG (katalog ter-parse dari schema.sql; konteks Q1/Q2 tepat; konteks GL tidak
+bocor ke Sales_Staff tetapi tersedia untuk Management).
 
 ## Struktur
 
@@ -139,6 +164,7 @@ usulan GL untuk Sales_Staff diblokir RBAC; kegagalan LLM memicu fallback determi
 app/main.py        FastAPI: POST /ask|/query, GET /health, demo UI
 app/engine.py      Text-to-SQL deterministik + format Rupiah + perangkai jawaban
 app/llm.py         Pengusul SQL berbasis LLM (opsional, OpenAI-compatible)
+app/rag.py         Retrieval konteks LLM: katalog skema + glosarium + few-shot (sadar RBAC)
 app/guardrails.py  Layer 0–2: injection intent, read-only SQL, RBAC tabel
 app/db.py          Memuat schema.sql (sumber kebenaran tunggal), eksekusi read-only
 static/index.html  Halaman demo Q1–Q5 dengan pemilih role

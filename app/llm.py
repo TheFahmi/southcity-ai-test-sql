@@ -12,21 +12,12 @@ Configuration (environment):
   LLM_MODEL       e.g. gpt-4o-mini
 """
 import os, re, json, urllib.request, urllib.error
+from . import rag
 
-SCHEMA_PROMPT = """You are a Text-to-SQL generator for a property ERP database.
-Reply with ONE SQL SELECT statement only. No explanation, no markdown fences.
-
-Tables:
-Units(UnitID, UnitNumber, Tower, Status)
-Sales_Contracts(ContractID, UnitID -> Units, CustomerName, SalesAmount, ContractDate)
-Invoices_Billing(InvoiceID, ContractID -> Sales_Contracts, PeriodMonth, PeriodYear, AmountBilled, AmountPaid, DueDate)
-GL_Journals(JournalID, AccountCode, AccountName, Debit, Credit, TransactionDate)
-
-Rules:
-- SELECT only. Never DELETE/UPDATE/INSERT/DROP/ALTER.
-- Outstanding billing = AmountBilled - AmountPaid.
-- Dates are ISO text 'YYYY-MM-DD'.
-"""
+# The prompt is no longer a static full-schema dump: rag.build_prompt()
+# retrieves only the tables, glossary entries, and few-shot examples
+# relevant to the question — and never retrieves tables the caller's
+# role may not access (see app/rag.py).
 
 def llm_configured():
     return bool(os.environ.get("LLM_API_KEY") and os.environ.get("LLM_MODEL"))
@@ -40,15 +31,16 @@ def extract_sql(text: str) -> str:
     if not m: raise ValueError("LLM response contains no SELECT statement")
     return m.group(0).strip().rstrip(";") + ""
 
-def propose_sql(question: str, timeout=30) -> str:
+def propose_sql(question: str, role: str = "Management", timeout=30) -> str:
     base = os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     key = os.environ["LLM_API_KEY"]
     model = os.environ["LLM_MODEL"]
+    prompt, _ctx = rag.build_prompt(question, role)
     body = json.dumps({
         "model": model,
         "temperature": 0,
         "messages": [
-            {"role": "system", "content": SCHEMA_PROMPT},
+            {"role": "system", "content": prompt},
             {"role": "user", "content": question},
         ],
     }).encode()
