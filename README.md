@@ -144,10 +144,6 @@ tests/             Test end-to-end kelima pertanyaan x kedua role + mode LLM
 schema.sql         Skema T-SQL asli dari template test (referensi produksi)
 ```
 
-## Materi presentasi
-
-- `Presentasi-SouthCity-AI-Assistant.pptx` — deck 10 slide (speaker notes tertanam di tiap slide)
-- `Naskah-Presentasi-dan-QA.md` — naskah bicara per slide, antisipasi 12 pertanyaan panel, skrip rekaman video demo, checklist
 
 ## Bukti demo
 
