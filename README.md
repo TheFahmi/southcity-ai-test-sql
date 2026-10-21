@@ -98,25 +98,49 @@ curl -s -X POST http://localhost:8000/ask -H 'Content-Type: application/json' \
 
 `user_role` dapat dikirim lewat body JSON, header `user_role`, atau header `X-User-Role`.
 
+## Mode LLM (opsional)
+
+Selain engine deterministik (default), sistem dapat memakai LLM sebagai
+**pengusul SQL** untuk pertanyaan di luar pola yang dikenal:
+
+```bash
+TEXT2SQL_MODE=llm LLM_BASE_URL=https://api.openai.com/v1 LLM_API_KEY=<key> LLM_MODEL=gpt-4o-mini \
+  uvicorn app.main:app --port 8000
+```
+
+`LLM_BASE_URL` menerima endpoint OpenAI-compatible apa pun (OpenAI, Azure OpenAI,
+atau gateway LLM internal). Prinsip keamanannya tidak berubah:
+
+- Layer 0 tetap berjalan sebelum LLM dipanggil — pertanyaan manipulasi/injection ditolak di depan.
+- SQL usulan LLM wajib lolos guardrail yang sama (read-only + RBAC) sebelum dieksekusi;
+  putusan keamanan guardrail bersifat final dan tidak dilemahkan oleh fallback.
+- Bila LLM tidak terjangkau / keluarannya tidak dapat diparse, sistem kembali ke
+  engine deterministik. Setiap respon mencantumkan field `engine`:
+  `llm:<model>`, `deterministic`, atau `deterministic (llm fallback)`.
+- Lihat `.env.example`. Mode default tanpa konfigurasi LLM apa pun: `deterministic`.
+
 ## Test otomatis
 
 ```bash
 pytest -v
 ```
 
-7 test mencakup: Q1, Q2, Q3 (unit vacant), Q4 ditolak untuk Sales_Staff,
+12 test mencakup: Q1, Q2, Q3 (unit vacant), Q4 ditolak untuk Sales_Staff,
 Q4 berhasil untuk Management (JournalID 901), Q5 ditolak untuk kedua role
-(+ verifikasi record 901 tidak terhapus), dan pengiriman role via header.
+(+ verifikasi record 901 tidak terhapus), pengiriman role via header, dan mode LLM
+(SQL baik lolos dengan tag `llm:<model>`; usulan DELETE diblokir READ_ONLY;
+usulan GL untuk Sales_Staff diblokir RBAC; kegagalan LLM memicu fallback deterministik).
 
 ## Struktur
 
 ```
 app/main.py        FastAPI: POST /ask|/query, GET /health, demo UI
 app/engine.py      Text-to-SQL deterministik + format Rupiah + perangkai jawaban
+app/llm.py         Pengusul SQL berbasis LLM (opsional, OpenAI-compatible)
 app/guardrails.py  Layer 0–2: injection intent, read-only SQL, RBAC tabel
 app/db.py          Skema + seed identik schema.sql, eksekusi read-only
 static/index.html  Halaman demo Q1–Q5 dengan pemilih role
-tests/test_api.py  Test end-to-end kelima pertanyaan x kedua role
+tests/             Test end-to-end kelima pertanyaan x kedua role + mode LLM
 schema.sql         Skema T-SQL asli dari template test (referensi produksi)
 ```
 

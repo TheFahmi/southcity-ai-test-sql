@@ -83,23 +83,42 @@ def generate_sql(question: str):
 
     raise Blocked("UNSUPPORTED", "Pertanyaan belum dapat dipahami. Coba sebutkan nama customer, nomor unit, periode, atau akun GL secara eksplisit. Contoh pertanyaan ada di README.")
 
+def classify_kind(sql: str):
+    """Infer the answer-builder kind from a (validated) SQL statement.
+    Used for LLM-proposed SQL, which arrives without an intent label."""
+    s = sql.upper()
+    if "GL_JOURNALS" in s: return "gl"
+    if "INVOICES_BILLING" in s and "SALES_CONTRACTS" in s and "LEFT JOIN" in s: return "unit_history"
+    if "INVOICES_BILLING" in s: return "arrears"
+    if "UNITS" in s: return "unit_history"
+    if "SALES_CONTRACTS" in s: return "sales_total"
+    return "generic"
+
+def _generic_answer(rows):
+    if not rows: return "Tidak ditemukan data yang sesuai.", rows
+    return f"Ditemukan {len(rows)} baris data yang sesuai dengan pertanyaan Anda.", rows
+
 def build_answer(kind, rows, ctx):
     if kind == "arrears":
         if not rows: return "Tidak ditemukan tagihan pada periode tersebut.", rows
+        if "TotalOutstanding" not in rows[0]: return _generic_answer(rows)
         total = sum(float(r["TotalOutstanding"] or 0) for r in rows)
         name = rows[0]["CustomerName"]
         return f"Sisa tunggakan billing {name} untuk periode bulan {rows[0]['PeriodMonth']} tahun {rows[0]['PeriodYear']} adalah {format_rupiah(total)}.", rows
     if kind == "sales_total":
         if not rows: return "Tidak ditemukan kontrak sales atas nama tersebut.", rows
         r = rows[0]
+        if "TotalSalesAmount" not in r: return _generic_answer(rows)
         return f"Total nilai kontrak sales atas nama {r['CustomerName']} di SouthCity adalah {format_rupiah(r['TotalSalesAmount'])} dari {r['ContractCount']} kontrak.", rows
     if kind == "unit_history":
         if not rows: return "Unit tidak ditemukan.", rows
         r = rows[0]
+        if "UnitNumber" not in r: return _generic_answer(rows)
         if r.get("ContractID") is None:
             return f"Unit {r['UnitNumber']} ({r['Tower']}) berstatus {r['Status']} dan tidak memiliki riwayat transaksi sales maupun tagihan billing.", rows
         return f"Ditemukan {len(rows)} baris riwayat transaksi sales dan billing untuk unit {r['UnitNumber']} ({r['Tower']}, status {r['Status']}).", rows
     if kind == "gl":
+        if rows and "Debit" not in rows[0]: return _generic_answer(rows)
         total_debit = sum(float(r["Debit"] or 0) for r in rows)
         return f"Ditemukan {len(rows)} catatan jurnal akun Kas & Bank pada periode tersebut, total Debit {format_rupiah(total_debit)}.", rows
-    return "Berikut hasilnya.", rows
+    return _generic_answer(rows)
