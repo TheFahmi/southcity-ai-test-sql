@@ -144,8 +144,13 @@ tests/             Test end-to-end kelima pertanyaan x kedua role + mode LLM
 schema.sql         Skema T-SQL asli dari template test (referensi produksi)
 ```
 
+## Materi presentasi
+
+- `Presentasi-SouthCity-AI-Assistant.pptx` — deck 10 slide (speaker notes tertanam di tiap slide)
+- `Naskah-Presentasi-dan-QA.md` — naskah bicara per slide, antisipasi 12 pertanyaan panel, skrip rekaman video demo, checklist
+
 ## Bukti demo
 
 Rekam layar 1–2 menit dari demo UI lokal (`http://localhost:8000/`) dengan urutan:
-Q1 Sales_Staff → Q4 Sales_Staff (tolak) → ganti Management, Q4 ulang (berhasil) → Q5 (tolak).
+Q1 Sales_Staff → Q2 Sales_Staff → Q3 Sales_Staff → Q4 Sales_Staff (tolak) → ganti Management, Q4 ulang (berhasil) → Q5 (tolak).
 Hasil angka pada tabel "Hasil terverifikasi" di atas adalah hasil aktual engine atas data dummy.
