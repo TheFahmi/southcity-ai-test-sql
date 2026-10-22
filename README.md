@@ -26,13 +26,21 @@ Pertanyaan (ID) + user_role (header `user_role` / `X-User-Role`, atau field body
           (hapus/delete/drop/…, "abaikan instruksi", klaim System Administrator)
         │
         ▼
+[RAG]     Retrieval konteks (app/rag.py): katalog skema dari schema.sql
+          (schema linking + ekspansi relasi FK), glosarium bisnis, dan
+          contoh few-shot — dipilih per pertanyaan dan sadar RBAC (tabel
+          terlarang bagi role tidak masuk konteksnya). Hasil retrieval
+          menjadi bahan prompt LLM dan dilaporkan ringkas di field `rag`.
+        │
+        ▼
 [Engine]  Text-to-SQL deterministik untuk domain ERP
           - Ekstraksi entitas: nama customer (dari DB), nomor unit (SM/SP ####),
             periode (bulan/tahun, termasuk nama bulan Bahasa Indonesia)
           - Intent: arrears billing | agregasi sales | riwayat unit | GL journals
           - SQL selalu terparameterisasi (?) — tidak ada string-interpolation input user
-          - Jalur LLM opsional: bila LLM dikonfigurasi, LLM boleh *mengusulkan* SQL,
-            tetapi usul itu wajib melewati guardrail yang sama di bawah sebelum dieksekusi.
+          - Jalur LLM opsional: bila mode LLM aktif dan terkonfigurasi, LLM boleh
+            *mengusulkan* SQL dari prompt hasil RAG di atas, tetapi usul itu wajib
+            melewati guardrail yang sama di bawah sebelum dieksekusi.
             Default tanpa API key = engine deterministik, hasil reproducible untuk penilaian.
         │
         ▼
@@ -48,6 +56,7 @@ Pertanyaan (ID) + user_role (header `user_role` / `X-User-Role`, atau field body
         │
         ▼
 Respon JSON: jawaban natural + nominal Rupiah terformat + `sql` + tabel `data`
+             + field `engine` (sumber SQL) dan `rag` (ringkasan retrieval)
 ```
 
 Kenapa berlapis? Karena satu lapis saja tidak cukup: LLM yang berhasil di-jailbreak pun
