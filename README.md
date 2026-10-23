@@ -5,6 +5,9 @@ Mengubah pertanyaan bahasa natural (Bahasa Indonesia) menjadi SQL **read-only** 
 mengeksekusinya ke database ERP (Units, Sales_Contracts, Invoices_Billing, GL_Journals),
 dan menjawab dengan angka terformat Rupiah + tabel pendukung.
 
+**Demo live:** https://test-southcity.mfah.me — UI demo + API (`POST /ask`) dapat
+dicoba langsung dari browser (service berjalan di X99, di balik Cloudflare Tunnel).
+
 ## Hasil terverifikasi (data dummy `schema.sql`)
 
 | # | Pertanyaan | Role | Hasil |
@@ -183,7 +186,8 @@ schema.sql         Skema T-SQL asli dari template test (referensi produksi)
 
 ## Bukti demo
 
-Rekam layar 1–2 menit dari demo UI lokal (`http://localhost:8000/`) dengan urutan:
+Demo dapat dibuka langsung di https://test-southcity.mfah.me (atau UI lokal
+`http://localhost:8000/`). Rekam layar 1–2 menit dengan urutan:
 Q1 Sales_Staff → Q2 Sales_Staff → Q3 Sales_Staff → Q4 Sales_Staff (tolak) → ganti Management, Q4 ulang (berhasil) → Q5 (tolak).
 Hasil angka pada tabel "Hasil terverifikasi" di atas adalah hasil aktual engine atas data dummy.
 
