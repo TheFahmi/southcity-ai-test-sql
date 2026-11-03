@@ -37,6 +37,7 @@
   /* ---------- presets ---------- */
   .preset{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fbfcfe;border-radius:10px;padding:11px 13px;margin-bottom:9px;cursor:pointer;font:inherit;transition:.15s}
   .preset:hover{border-color:var(--teal);background:#f2fbfa}
+  .preset.active{border-color:var(--teal);background:#e6f7f5;box-shadow:0 0 0 1px var(--teal)}
   .preset .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.6px;color:var(--teal-dark);background:#e0f5f3;border-radius:5px;padding:2px 7px;margin-bottom:5px}
   .preset .tag.warn{color:#a93226;background:#fbeae8}
   .preset div{font-size:13.5px;line-height:1.45;color:var(--ink)}
@@ -103,7 +104,7 @@
 <main>
   <section>
     <div class="card">
-      <div class="card-h"><h2>Pertanyaan</h2><p>Pilih contoh pertanyaan manajemen, atau tulis sendiri.</p></div>
+      <div class="card-h"><h2>Pertanyaan</h2><p>Klik contoh pertanyaan untuk mengisi, lalu tekan Tanya AI untuk menjalankan. Atau tulis sendiri.</p></div>
       <div class="card-b">
         <div id="presets"></div>
         <textarea id="q" placeholder="Tulis pertanyaan Anda di sini..."></textarea>
@@ -150,8 +151,21 @@ PRESETS.forEach(p => {
   b.className = 'preset';
   b.innerHTML = '<span class="tag' + (p.warn ? ' warn' : '') + '">Q' + p.n + ' &middot; ' + p.tag + '</span><div></div>';
   b.querySelector('div').textContent = p.q;
-  b.onclick = () => { document.getElementById('q').value = p.q; ask(); };
+  b.onclick = () => { selectQuestion(p.q, b); };
   presetsEl.appendChild(b);
+});
+
+function selectQuestion(text, presetBtn){
+  const ta = document.getElementById('q');
+  ta.value = text;
+  document.querySelectorAll('.preset').forEach(x => x.classList.toggle('active', x === presetBtn));
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+document.getElementById('q').addEventListener('input', e => {
+  document.querySelectorAll('.preset.active').forEach(x => {
+    if (x.querySelector('div').textContent !== e.target.value) x.classList.remove('active');
+  });
 });
 
 document.getElementById('roleSeg').addEventListener('click', e => {
@@ -228,7 +242,7 @@ function addHistory(q, j, httpStatus){
   b.className = 'hist-item';
   b.innerHTML = '<div class="hq"></div><div class="hm"><span class="' + (j.status === 'ok' ? 'ok' : 'err') + '">' + httpStatus + '</span> &middot; ' + esc(j.user_role || role) + (j.engine ? ' &middot; ' + esc(j.engine) : '') + '</div>';
   b.querySelector('.hq').textContent = q;
-  b.onclick = () => { document.getElementById('q').value = q; ask(); };
+  b.onclick = () => { selectQuestion(q, null); };
   box.prepend(b);
   while (box.children.length > 8) box.removeChild(box.lastChild);
 }
