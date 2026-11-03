@@ -67,8 +67,15 @@ async def ask(payload: AskRequest, request: Request,
             if raw_sql is not None:
                 # Security verdicts (RBAC / READ_ONLY) from validate_sql are final:
                 # they propagate as Blocked and are NOT softened by the fallback.
+                # A plain execution failure (e.g. hallucinated column) is not a
+                # security verdict: fall through to the deterministic engine.
                 kind = classify_kind(raw_sql)
-                return _run(raw_sql, (), kind, role, payload.question, f"llm:{os.environ.get('LLM_MODEL')}", rag_ctx)
+                try:
+                    return _run(raw_sql, (), kind, role, payload.question, f"llm:{os.environ.get('LLM_MODEL')}", rag_ctx)
+                except Blocked:
+                    raise
+                except Exception:
+                    pass
             sql, params, kind = generate_sql(payload.question)
             return _run(sql, params, kind, role, payload.question, "deterministic (llm fallback)", rag_ctx)
 

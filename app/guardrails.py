@@ -39,8 +39,25 @@ def validate_sql(sql: str, user_role: str):
     bad = tokens & FORBIDDEN
     if bad:
         raise Blocked("READ_ONLY", f"Permintaan ditolak: kata kunci manipulasi data terdeteksi: {', '.join(sorted(bad))}.")
-    # Table extraction: FROM / JOIN targets
-    tables = set(t.upper() for t in re.findall(r"(?i)\b(?:FROM|JOIN)\s+([A-Za-z_][A-Za-z0-9_]*)", cleaned)) & KNOWN_TABLES
+    # Table extraction: FROM / JOIN targets. Unknown tables are NOT
+    # silently dropped: a near-match of a real table (e.g. an LLM writing
+    # GL_JOURNAL for GL_JOURNALS) is treated as that table for RBAC, and
+    # anything else is rejected instead of failing at execution time.
+    import difflib
+    raw_tables = set(t.upper() for t in re.findall(r"(?i)\b(?:FROM|JOIN)\s+([A-Za-z_][A-Za-z0-9_]*)", cleaned))
+    cte_names = set(t.upper() for t in re.findall(r"(?i)\b(?:WITH|,)\s+([A-Za-z_][A-Za-z0-9_]*)\s+AS\s*\(", cleaned))
+    tables = set()
+    for t in raw_tables:
+        if t in cte_names:
+            continue
+        if t in KNOWN_TABLES:
+            tables.add(t)
+            continue
+        near = difflib.get_close_matches(t, KNOWN_TABLES, n=1, cutoff=0.8)
+        if near:
+            tables.add(near[0])
+            continue
+        raise Blocked("UNKNOWN_TABLE", f"Permintaan ditolak: tabel '{t}' tidak ada di skema database.")
     forbidden_tables = tables - ROLE_TABLES[user_role]
     if forbidden_tables:
         raise Blocked("RBAC", f"Akses ditolak untuk role {user_role}: tabel {', '.join(sorted(forbidden_tables))} hanya dapat diakses oleh Management.")
