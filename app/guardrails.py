@@ -17,7 +17,7 @@ def detect_manipulation_intent(question: str):
     """Layer 0: natural-language manipulation / prompt-injection intent.
     Catches Pertanyaan 5 even before any SQL is generated."""
     q = question.lower()
-    manip = re.search(r"\b(hapus|delete|drop|update|insert|alter|truncate|ubah\s+record|tambah\s+record|edit\s+record)\b", q)
+    manip = re.search(r"\b(hapus|delete|drop|update|insert|alter|truncate|rubah|modify|jadikan|ubah\s+(record|status|data|nilai)|ganti\s+(status|data)|perbarui\s+(data|record|status)|edit\s+(record|data|status)|set\s+status|change\s+status|(tambah|tambahkan|buat|input|masukkan)\s+(record|data|unit|kontrak|invoice|jurnal|tagihan))\b", q)
     injection = re.search(r"(abaikan instruksi|ignore (previous|all) instruction|system administrator|jailbreak|bypass)", q)
     if manip:
         raise Blocked("READ_ONLY", "Permintaan ditolak: sistem bersifat read-only. Perintah manipulasi data (DELETE/DROP/UPDATE/INSERT/ALTER) tidak diperbolehkan tanpa terkecuali.")
