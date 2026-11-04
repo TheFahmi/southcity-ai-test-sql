@@ -5,7 +5,7 @@ from typing import Optional
 import os
 from .db import init_db, run_readonly
 from .engine import generate_sql, build_answer, classify_kind
-from .guardrails import validate_sql, Blocked, detect_manipulation_intent
+from .guardrails import validate_sql, Blocked, detect_manipulation_intent, ROLE_TABLES
 from . import llm as llm_mod
 from . import rag as rag_mod
 
@@ -24,7 +24,8 @@ def health():
     mode = os.environ.get("TEXT2SQL_MODE", "deterministic")
     return {"status": "ok", "service": "southcity-ai-text-to-sql",
             "text2sql_mode": mode, "llm_configured": llm_mod.llm_configured(),
-            "llm_model": os.environ.get("LLM_MODEL") if llm_mod.llm_configured() else None}
+            "llm_model": os.environ.get("LLM_MODEL") if llm_mod.llm_configured() else None,
+            "db_backend": os.environ.get("DB_BACKEND", "sqlite").lower()}
 
 def _run(sql, params, kind, role, question, engine_tag, rag_ctx=None):
     sql = validate_sql(sql, role)  # guardrail on generated SQL, whatever its source
@@ -49,6 +50,15 @@ async def ask(payload: AskRequest, request: Request,
         # Layer 0 always runs first, in every mode: a manipulation /
         # prompt-injection question never even reaches an LLM or the DB.
         detect_manipulation_intent(payload.question)
+
+        # Question-level RBAC pre-check: if the question is *about* a table
+        # this role may not access, refuse before any generation happens.
+        # (Otherwise a generator denied that table's context may improvise
+        # a table-less SELECT instead of the access refusal the caller is
+        # entitled to.) Deliberately runs on intent, not on generated SQL.
+        forbidden_intent = rag_mod.intended_tables(payload.question) - ROLE_TABLES.get(role, set())
+        if forbidden_intent:
+            raise Blocked("RBAC", f"Akses ditolak untuk role {role}: pertanyaan ini menyangkut tabel {', '.join(sorted(forbidden_intent))} yang hanya dapat diakses oleh Management.")
 
         # RAG retrieval runs in every mode: it feeds the LLM prompt in
         # llm mode, and its summary is reported in the response either

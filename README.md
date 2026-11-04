@@ -68,16 +68,23 @@ keputusan akhir ada di kode guardrail, bukan di prompt.
 
 ## Database
 
-- Skema produksi target: MS SQL Server, sesuai `schema.sql` asli dari template
-  (T-SQL `CREATE TABLE` + `INSERT` dummy).
-- Untuk demo lokal tanpa SQL Server, `app/db.py` **memuat `schema.sql` itu sendiri**
-  (satu-satunya sumber kebenaran — tidak ada duplikasi skema/seed di kode) dan
-  mengeksekusinya di SQLite dengan satu penyesuaian dialek: frasa T-SQL
-  `FOREIGN KEY REFERENCES` diterjemahkan menjadi `REFERENCES`. Seluruh angka
-  jawaban dapat direproduksi persis. Query yang digenerate adalah SQL standar
-  (JOIN/GROUP BY/SUM/parameter) yang portabel ke T-SQL; untuk deployment SQL Server,
-  ganti layer koneksi di `app/db.py` dengan `pyodbc`/`pymssql` dan placeholder `?` yang sama.
-- Koneksi eksekusi sengaja dibuka read-only.
+Dua backend, dipilih lewat environment `DB_BACKEND` — logika aplikasi, guardrail,
+dan RAG tidak berubah di keduanya:
+
+- **`sqlserver` (demo live saat ini)** — MS SQL Server 2022 (Docker) dimuat dengan
+  `schema.sql` asli **tanpa modifikasi**. Aplikasi terkoneksi sebagai login khusus
+  yang hanya memegang `GRANT SELECT` pada keempat tabel (plus `DENY INSERT/UPDATE/DELETE`),
+  jadi read-only ditegakkan oleh database itu sendiri, bukan sekadar janji aplikasi:
+  upaya `DELETE` dari login aplikasi ditolak SQL Server (Msg 229). Driver: `pymssql`;
+  placeholder `?` diterjemahkan ke `%s` di layer koneksi.
+- **`sqlite` (default, untuk pengembangan/test offline)** — `app/db.py` **memuat
+  `schema.sql` itu sendiri** (satu-satunya sumber kebenaran — tidak ada duplikasi
+  skema/seed di kode) dan mengeksekusinya di SQLite dengan satu penyesuaian dialek:
+  frasa T-SQL `FOREIGN KEY REFERENCES` diterjemahkan menjadi `REFERENCES`. Koneksi
+  dibuka `mode=ro` + `PRAGMA query_only`.
+
+Query yang digenerate adalah SQL standar (JOIN/GROUP BY/SUM/parameter) yang portabel
+antar keduanya; prompt LLM diberi tahu dialek target sesuai backend aktif.
 
 ## Menjalankan lokal
 
@@ -170,6 +177,25 @@ usulan GL untuk Sales_Staff diblokir RBAC; kegagalan LLM memicu fallback determi
 dan RAG (katalog ter-parse dari schema.sql; konteks Q1/Q2 tepat; konteks GL tidak
 bocor ke Sales_Staff tetapi tersedia untuk Management).
 
+## Evaluasi & red team (bukti, bukan klaim)
+
+```bash
+python scripts/run_eval.py --base http://127.0.0.1:8010 --runs 3   # Q1–Q5 x 2 role, nilai ekspektasi dari schema.sql
+python scripts/red_team.py --base http://127.0.0.1:8010            # 20 kasus serangan, 3 mode
+```
+
+- `run_eval.py` menjalankan kelima pertanyaan untuk kedua role secara berulang,
+  memeriksa angka jawaban terhadap nilai yang dihitung manual dari `schema.sql`,
+  dan memverifikasi JournalID 901 tetap utuh sesudah percobaan Q5.
+- `red_team.py` menyerang dari tiga arah: pertanyaan bermusuhan lewat API,
+  SQL berbahaya yang disuapkan langsung ke validator guardrail (mode *compromised
+  model* — model dianggap sudah ter-jailbreak total), dan upaya tulis langsung
+  lewat layer data aplikasi (mode *direct to DB*). Kasus hanya lulus bila serangan
+  tertahan di lapis yang diharapkan dan tidak ada data yang kembali/berubah.
+- Laporan terakhir tersimpan di `evidence/eval_report.md` dan
+  `evidence/red_team_report.md` (dengan versi JSON), masing-masing mencantumkan
+  commit yang diuji.
+
 ## Struktur
 
 ```
@@ -181,6 +207,8 @@ app/guardrails.py  Layer 0–2: injection intent, read-only SQL, RBAC tabel
 app/db.py          Memuat schema.sql (sumber kebenaran tunggal), eksekusi read-only
 static/index.html  Halaman demo Q1–Q5 dengan pemilih role
 tests/             Test end-to-end kelima pertanyaan x kedua role + mode LLM
+scripts/           run_eval.py (evaluasi fungsional) + red_team.py (uji serangan)
+evidence/          Laporan eval & red-team terakhir (md + json, terikat commit)
 schema.sql         Skema T-SQL asli dari template test (referensi produksi)
 ```
 

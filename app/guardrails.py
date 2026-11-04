@@ -35,6 +35,8 @@ def validate_sql(sql: str, user_role: str):
         raise Blocked("READ_ONLY", "Permintaan ditolak: hanya satu statement SELECT yang diperbolehkan.")
     if not re.match(r"(?is)^\s*(SELECT|WITH)\b", cleaned):
         raise Blocked("READ_ONLY", "Permintaan ditolak: hanya query SELECT (read-only) yang diperbolehkan.")
+    if not re.search(r"(?i)\bFROM\b", cleaned):
+        raise Blocked("INVALID_QUERY", "Permintaan ditolak: query harus membaca data dari tabel skema (SELECT tanpa FROM tidak diperbolehkan).")
     tokens = set(re.findall(r"[A-Za-z_]+", cleaned.upper()))
     bad = tokens & FORBIDDEN
     if bad:

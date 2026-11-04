@@ -141,6 +141,33 @@ def retrieve(question: str, role: str, top_examples: int = 2):
     return {"tables": tables, "glossary": glossary, "examples": examples,
             "catalog": {t: visible[t] for t in tables}}
 
+# Strong markers that a question is *about* the general ledger. Used for a
+# question-level RBAC pre-check in main.ask: a question about a table the
+# role may not access is refused before generation, so the generator can
+# never improvise around context it was not given. GL is matched only via
+# these markers (not its broad synonym list) to avoid false positives on
+# words like "bank"/"akun" in ordinary billing questions.
+GL_INTENT_TOKENS = {"gl", "jurnal", "ledger", "debit", "kredit", "akuntansi"}
+GL_INTENT_PHRASES = ("kas & bank", "kas dan bank", "buku besar", "general ledger")
+
+def intended_tables(question: str):
+    """Tables a question is about, ignoring role visibility."""
+    catalog = load_catalog()
+    q = _tokens(question)
+    hits = set()
+    for table in catalog:
+        if table.upper() == "GL_JOURNALS":
+            continue
+        doc = set()
+        doc |= _tokens(table.replace("_", " "))
+        doc |= set(SYNONYMS.get(table, []))
+        if _score(q, doc) > 0:
+            hits.add(table.upper())
+    qtext = question.lower()
+    if (GL_INTENT_TOKENS & q) or any(p in qtext for p in GL_INTENT_PHRASES):
+        hits.add("GL_JOURNALS")
+    return hits
+
 def build_prompt(question: str, role: str):
     """Assemble the LLM prompt from retrieved context only."""
     ctx = retrieve(question, role)
@@ -161,12 +188,17 @@ def build_prompt(question: str, role: str):
         for e in ctx["examples"]:
             lines.append(f"Q: {e['question']}")
             lines.append(f"SQL: {e['sql']}")
+    import os
+    if os.environ.get("DB_BACKEND", "sqlite").lower() == "sqlserver":
+        dialect = "- Target dialect: MS SQL Server (T-SQL). Use T-SQL syntax; date columns are DATE type, compare with 'YYYY-MM-DD' literals."
+    else:
+        dialect = "- Target dialect: SQLite. Dates are stored as ISO text 'YYYY-MM-DD'."
     lines += [
         "",
         "Rules:",
         "- SELECT only. Never DELETE/UPDATE/INSERT/DROP/ALTER.",
         "- Outstanding billing = AmountBilled - AmountPaid.",
-        "- Dates are ISO text 'YYYY-MM-DD'.",
+        dialect,
         "",
         "Write the SQL for the user's question.",
     ]
