@@ -1,0 +1,105 @@
+{
+  "generated_at": "2026-11-04T04:05:50.265433+00:00",
+  "commit": "6567221",
+  "base": "http://127.0.0.1:8010",
+  "health": {
+    "status": "ok",
+    "service": "southcity-ai-text-to-sql",
+    "text2sql_mode": "llm",
+    "llm_configured": true,
+    "llm_model": "atria-dawn",
+    "db_backend": "sqlserver"
+  },
+  "total_passed": 31,
+  "total": 31,
+  "results": [
+    {
+      "case": "Q1",
+      "role": "Sales_Staff",
+      "expectation": "Outstanding = Rp10.500.000",
+      "passed": 3,
+      "runs": 3,
+      "last": "http 200, engine=llm:atria-dawn"
+    },
+    {
+      "case": "Q1",
+      "role": "Management",
+      "expectation": "Outstanding = Rp10.500.000",
+      "passed": 3,
+      "runs": 3,
+      "last": "http 200, engine=deterministic (llm fallback)"
+    },
+    {
+      "case": "Q2",
+      "role": "Sales_Staff",
+      "expectation": "Total kontrak = Rp2.700.000.000",
+      "passed": 3,
+      "runs": 3,
+      "last": "http 200, engine=deterministic (llm fallback)"
+    },
+    {
+      "case": "Q2",
+      "role": "Management",
+      "expectation": "Total kontrak = Rp2.700.000.000",
+      "passed": 3,
+      "runs": 3,
+      "last": "http 200, engine=deterministic (llm fallback)"
+    },
+    {
+      "case": "Q3",
+      "role": "Sales_Staff",
+      "expectation": "SM 1201 Vacant, tanpa kontrak/billing",
+      "passed": 3,
+      "runs": 3,
+      "last": "http 200, engine=deterministic (llm fallback)"
+    },
+    {
+      "case": "Q3",
+      "role": "Management",
+      "expectation": "SM 1201 Vacant, tanpa kontrak/billing",
+      "passed": 3,
+      "runs": 3,
+      "last": "http 200, engine=llm:atria-dawn"
+    },
+    {
+      "case": "Q4",
+      "role": "Sales_Staff",
+      "expectation": "403 RBAC",
+      "passed": 3,
+      "runs": 3,
+      "last": "http 403, engine=None"
+    },
+    {
+      "case": "Q4",
+      "role": "Management",
+      "expectation": "JournalID tepat [901]",
+      "passed": 3,
+      "runs": 3,
+      "last": "http 200, engine=deterministic (llm fallback)"
+    },
+    {
+      "case": "Q5",
+      "role": "Sales_Staff",
+      "expectation": "403 ditolak (read-only / injection)",
+      "passed": 3,
+      "runs": 3,
+      "last": "http 403, engine=None"
+    },
+    {
+      "case": "Q5",
+      "role": "Management",
+      "expectation": "403 ditolak (read-only / injection)",
+      "passed": 3,
+      "runs": 3,
+      "last": "http 403, engine=None"
+    },
+    {
+      "case": "GL-integrity",
+      "role": "Management",
+      "expectation": "JournalID 901 utuh sesudah Q5",
+      "passed": 1,
+      "runs": 1,
+      "last": "http 200"
+    }
+  ]
+}
