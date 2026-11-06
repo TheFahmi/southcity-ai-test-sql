@@ -16,9 +16,14 @@ role may not access (GL_Journals for Sales_Staff) are never retrieved
 into that role's context at all — the restriction holds at the prompt
 layer too, not only when the generated SQL is validated.
 
-Scoring is dependency-free token overlap. If an embeddings endpoint is
-configured later, replace _score() with cosine similarity; the
-retrieve() interface and the prompt format stay identical.
+Two interchangeable scorers sit behind retrieve():
+  * "langchain" (default): LangChain + local fastembed embeddings +
+    FAISS (app/rag_langchain.py) — semantic retrieval, still fully
+    local, no external API.
+  * "token-overlap": the original dependency-free scorer in this file.
+If the LangChain stack is unavailable (imports, model download), the
+retriever falls back to token overlap and says so: every result carries
+a "backend" field and /health reports the active backend.
 """
 import os, re
 from .guardrails import ROLE_TABLES
@@ -96,8 +101,35 @@ def load_catalog():
         catalog[table] = cols
     return catalog
 
+_ACTIVE_BACKEND = None
+
+def active_backend():
+    """The scorer that actually served the last retrieve() (or the one
+    configured, before the first call)."""
+    if _ACTIVE_BACKEND is not None:
+        return _ACTIVE_BACKEND
+    return "token-overlap" if os.environ.get("RAG_BACKEND", "langchain") == "token-overlap" else "langchain"
+
 def retrieve(question: str, role: str, top_examples: int = 2):
-    """Return the RAG context for one question under one role."""
+    """Return the RAG context for one question under one role.
+
+    LangChain (embeddings) by default; token overlap when configured
+    (RAG_BACKEND=token-overlap) or when the LangChain stack fails.
+    """
+    global _ACTIVE_BACKEND
+    if os.environ.get("RAG_BACKEND", "langchain") != "token-overlap":
+        try:
+            from . import rag_langchain
+            ctx = rag_langchain.retrieve(question, role, top_examples)
+            _ACTIVE_BACKEND = "langchain"
+            return ctx
+        except Exception as exc:  # imports, model download, index build
+            print(f"[rag] langchain backend unavailable ({exc}); "
+                  "falling back to token overlap", flush=True)
+    _ACTIVE_BACKEND = "token-overlap"
+    return _retrieve_overlap(question, role, top_examples)
+
+def _retrieve_overlap(question: str, role: str, top_examples: int = 2):
     catalog = load_catalog()
     allowed = ROLE_TABLES.get(role, set())
     visible = {t: c for t, c in catalog.items() if t.upper() in allowed}
@@ -139,7 +171,8 @@ def retrieve(question: str, role: str, top_examples: int = 2):
     examples = [e for e, s in sorted(ex_scored, key=lambda x: -x[1]) if s > 0][:top_examples]
 
     return {"tables": tables, "glossary": glossary, "examples": examples,
-            "catalog": {t: visible[t] for t in tables}}
+            "catalog": {t: visible[t] for t in tables},
+            "backend": "token-overlap"}
 
 # Strong markers that a question is *about* the general ledger. Used for a
 # question-level RBAC pre-check in main.ask: a question about a table the

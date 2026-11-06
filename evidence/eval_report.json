@@ -1,14 +1,16 @@
 {
-  "generated_at": "2026-11-04T04:05:50.265433+00:00",
-  "commit": "6567221",
-  "base": "http://127.0.0.1:8010",
+  "generated_at": "2026-11-06T15:13:05.284751+00:00",
+  "commit": "unknown",
+  "base": "https://test-southcity.mfah.me",
   "health": {
     "status": "ok",
     "service": "southcity-ai-text-to-sql",
     "text2sql_mode": "llm",
     "llm_configured": true,
     "llm_model": "atria-dawn",
-    "db_backend": "sqlserver"
+    "db_backend": "sqlserver",
+    "rag_backend": "langchain",
+    "sample_data": true
   },
   "total_passed": 31,
   "total": 31,
@@ -51,7 +53,7 @@
       "expectation": "SM 1201 Vacant, tanpa kontrak/billing",
       "passed": 3,
       "runs": 3,
-      "last": "http 200, engine=deterministic (llm fallback)"
+      "last": "http 200, engine=llm:atria-dawn"
     },
     {
       "case": "Q3",
@@ -75,7 +77,7 @@
       "expectation": "JournalID tepat [901]",
       "passed": 3,
       "runs": 3,
-      "last": "http 200, engine=deterministic (llm fallback)"
+      "last": "http 200, engine=llm:atria-dawn"
     },
     {
       "case": "Q5",

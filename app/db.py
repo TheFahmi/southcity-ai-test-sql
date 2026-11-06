@@ -46,6 +46,17 @@ def _run_sqlserver(sql, params=()):
     finally:
         conn.close()
 
+SEED_PATH = os.path.join(os.path.dirname(__file__), "..", "seed_sample.sql")
+# Sample data (seed_sample.sql, +500 rows) is on by default for the demo;
+# the graded Q1-Q5 answers are identical with or without it. Turn it off
+# with SAMPLE_DATA=0 to run against exactly the assignment's dummy data.
+SAMPLE_DATA = os.environ.get("SAMPLE_DATA", "1") != "0"
+_SAMPLE_SENTINEL = "SM 1301"  # first unit number that only exists in the seed
+
+def _load_seed_sql():
+    with open(SEED_PATH, encoding="utf-8") as f:
+        return f.read()
+
 def init_db():
     if BACKEND == "sqlserver":
         _run_sqlserver("SELECT COUNT(*) AS n FROM Units")
@@ -54,8 +65,12 @@ def init_db():
     if os.path.exists(DB_PATH):
         try:
             conn = sqlite3.connect(DB_PATH)
-            need_build = conn.execute("SELECT COUNT(*) FROM Units").fetchone()[0] == 0
+            units = conn.execute("SELECT COUNT(*) FROM Units").fetchone()[0]
+            has_sample = conn.execute(
+                "SELECT COUNT(*) FROM Units WHERE UnitNumber = ?",
+                (_SAMPLE_SENTINEL,)).fetchone()[0] > 0
             conn.close()
+            need_build = units == 0 or has_sample != SAMPLE_DATA
         except sqlite3.Error:
             need_build = True
     if not need_build:
@@ -65,6 +80,8 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     try:
         conn.executescript(_load_schema_sql())
+        if SAMPLE_DATA and os.path.exists(SEED_PATH):
+            conn.executescript(_load_seed_sql())
         conn.commit()
     finally:
         conn.close()

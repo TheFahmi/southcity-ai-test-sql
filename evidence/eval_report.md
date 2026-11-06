@@ -1,6 +1,6 @@
 # Evaluation report
 
-Generated 2026-11-04T04:05:50.265433+00:00 at commit `6567221` against `http://127.0.0.1:8010`.
+Generated 2026-11-06T15:13:05.284751+00:00 at commit `unknown` against `https://test-southcity.mfah.me`.
 Health: mode=llm, model=atria-dawn, db_backend=sqlserver.
 
 **31/31 checks passed.** Expected values hand-computed from schema.sql.

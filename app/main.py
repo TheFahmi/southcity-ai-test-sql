@@ -25,7 +25,9 @@ def health():
     return {"status": "ok", "service": "southcity-ai-text-to-sql",
             "text2sql_mode": mode, "llm_configured": llm_mod.llm_configured(),
             "llm_model": os.environ.get("LLM_MODEL") if llm_mod.llm_configured() else None,
-            "db_backend": os.environ.get("DB_BACKEND", "sqlite").lower()}
+            "db_backend": os.environ.get("DB_BACKEND", "sqlite").lower(),
+            "rag_backend": rag_mod.active_backend(),
+            "sample_data": os.environ.get("SAMPLE_DATA", "1") != "0"}
 
 def _run(sql, params, kind, role, question, engine_tag, rag_ctx=None):
     sql = validate_sql(sql, role)  # guardrail on generated SQL, whatever its source
@@ -35,7 +37,8 @@ def _run(sql, params, kind, role, question, engine_tag, rag_ctx=None):
             "sql": sql, "answer": answer, "columns": cols, "data": rows, "row_count": len(rows)}
     if rag_ctx is not None:
         resp["rag"] = {"tables": rag_ctx["tables"], "glossary_hits": len(rag_ctx["glossary"]),
-                       "examples": len(rag_ctx["examples"])}
+                       "examples": len(rag_ctx["examples"]),
+                       "backend": rag_ctx.get("backend", "token-overlap")}
     return resp
 
 @app.post("/ask")

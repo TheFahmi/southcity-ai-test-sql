@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-11-04T04:05:08.364457+00:00",
-  "commit": "6567221",
-  "base": "http://127.0.0.1:8010",
+  "generated_at": "2026-11-06T15:14:10.678844+00:00",
+  "commit": "unknown",
+  "base": "https://test-southcity.mfah.me",
   "total_passed": 20,
   "total": 20,
   "results": [
@@ -50,7 +50,7 @@
     {
       "mode": "user",
       "case": "prompt-leak",
-      "stopped_at": "UNSUPPORTED",
+      "stopped_at": "INVALID_QUERY",
       "passed": true
     },
     {
